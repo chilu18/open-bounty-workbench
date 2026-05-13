@@ -1,0 +1,7 @@
+title = "Open Bounty Workbench secret scanning"
+
+[allowlist]
+description = "Repository examples use public URLs and placeholders only."
+paths = [
+  '''package-lock\.json$'''
+]

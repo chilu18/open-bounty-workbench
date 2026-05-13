@@ -1,0 +1,30 @@
+{
+  "name": "open-bounty-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first workflow system for authorized security research, scope tracking, evidence discipline, and remediation reports.",
+  "type": "module",
+  "bin": {
+    "obw": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "scan:secrets": "node scripts/secret-scan.mjs",
+    "check": "npm run build && npm run test && npm run scan:secrets",
+    "triage:sample": "tsx src/cli/index.ts triage examples/programs.sample.json",
+    "report:sample": "tsx src/cli/index.ts report examples/finding.sample.json"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.6"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

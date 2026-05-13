@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.npm-cache/
+.DS_Store
+*.log
+
+.env
+.env.*
+!.env.example
+
+coverage/
+.nyc_output/

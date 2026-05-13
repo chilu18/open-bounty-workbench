@@ -1,0 +1,45 @@
+[
+  {
+    "id": "zabbix",
+    "name": "Zabbix",
+    "platform": "HackerOne",
+    "programUrl": "https://hackerone.com/zabbix",
+    "scopeUrl": "https://www.zabbix.com/zabbix_security_policy",
+    "disclosureUrl": "https://hackerone.com/zabbix",
+    "paid": true,
+    "minRewardUsd": 50,
+    "maxRewardUsd": 3000,
+    "authorization": "explicit",
+    "safeHarbor": "partial",
+    "allowsLocalTesting": true,
+    "allowsLiveTesting": false,
+    "requiresEnrollment": false,
+    "repoUrls": ["https://github.com/zabbix/zabbix"],
+    "targets": [
+      {
+        "type": "repo",
+        "identifier": "https://github.com/zabbix/zabbix",
+        "inScope": true,
+        "notes": "Open-source code review target."
+      }
+    ],
+    "outOfScope": ["Unauthorized live testing", "Credential access", "Payout handling"],
+    "notes": "Good local-first target."
+  },
+  {
+    "id": "unknown-saas",
+    "name": "Unknown SaaS",
+    "platform": "Unknown",
+    "programUrl": "https://example.com",
+    "paid": true,
+    "authorization": "ambiguous",
+    "safeHarbor": "unknown",
+    "allowsLocalTesting": false,
+    "allowsLiveTesting": true,
+    "requiresEnrollment": true,
+    "repoUrls": [],
+    "targets": [],
+    "outOfScope": [],
+    "notes": "Should be rejected."
+  }
+]

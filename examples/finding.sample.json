@@ -1,0 +1,34 @@
+{
+  "id": "sample-validated-finding",
+  "programId": "demo",
+  "title": "Validated authorization bypass in local demo route",
+  "status": "validated",
+  "affectedTarget": "local demo app only",
+  "observedFacts": [
+    {
+      "claim": "The local demo route accepts an ownerId parameter from the request body.",
+      "evidenceSource": "code",
+      "evidenceReference": "examples/demo-app/routes.ts:42"
+    },
+    {
+      "claim": "A regression test shows a non-owner can access another owner's record before the patch.",
+      "evidenceSource": "test",
+      "evidenceReference": "tests/demo-authz.test.ts"
+    }
+  ],
+  "inferences": ["The authorization decision trusts attacker-controlled ownerId."],
+  "hypotheses": [],
+  "violatedInvariant": "Record access must be authorized against the authenticated subject, not request-supplied ownership.",
+  "trustBoundary": "HTTP request body to server-side authorization check.",
+  "attackerControl": "The attacker controls ownerId in the request body.",
+  "exploitPreconditions": ["Authenticated non-owner account in the local demo app."],
+  "impact": "A non-owner can read another user's local demo record.",
+  "reproductionSteps": [
+    "Start the local demo app.",
+    "Authenticate as user A.",
+    "Send a request containing user B's ownerId.",
+    "Observe user B's record in the response."
+  ],
+  "counterevidence": ["This is sample data and not a real target report."],
+  "confidence": 0.82
+}
