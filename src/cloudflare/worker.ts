@@ -38,6 +38,12 @@ export default {
       }, { status: 501 });
     }
 
+    if (url.pathname === "/api/run-approved-audit") {
+      return jsonResponse({
+        error: "Running approved audits is available only in the local/Mac mini runtime."
+      }, { status: 501 });
+    }
+
     if (url.pathname === "/api/pipeline") {
       if (request.method !== "POST") {
         return jsonResponse({ error: "Method not allowed" }, { status: 405 });

@@ -144,9 +144,6 @@ function renderApproved(queue = []) {
   }
 
   approvedPanel.innerHTML = approved.map((item) => {
-    const directoryName = item.programId.replace(/[^a-z0-9._-]/gi, "-");
-    const command = `mkdir -p ~/obw-targets && cd ~/obw-targets && git clone ${item.repoUrl} ${directoryName} && cd /home/hs-chilu/open-bounty-workbench && npx tsx src/cli/index.ts audit-local ~/obw-targets/${directoryName}`;
-
     return `
       <article class="item-card approved-card">
         <div class="item-main">
@@ -159,10 +156,11 @@ function renderApproved(queue = []) {
         <dl>
           <div><dt>Repo</dt><dd><a href="${escapeHtml(item.repoUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.repoUrl)}</a></dd></div>
           <div><dt>Approved</dt><dd>${escapeHtml(state.approvals[item.programId].approvedAt)}</dd></div>
-          <div><dt>Mac mini</dt><dd><code>${escapeHtml(command)}</code></dd></div>
+          <div><dt>Action</dt><dd>Run a local-only audit on the Mac mini runtime.</dd></div>
         </dl>
         <div class="actions">
-          <button type="button" data-copy-command="${escapeHtml(command)}">Copy command</button>
+          <button type="button" data-run-audit="${escapeHtml(item.programId)}">Run on Mac mini</button>
+          <button class="secondary" type="button" data-show-details="${escapeHtml(item.programId)}">Details</button>
         </div>
       </article>
     `;
@@ -360,13 +358,59 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
-  const copyCommand = target.dataset.copyCommand;
-  if (copyCommand) {
-    await navigator.clipboard.writeText(copyCommand);
-    target.textContent = "Copied";
-    setTimeout(() => {
-      target.textContent = "Copy command";
-    }, 1200);
+  const runAuditId = target.dataset.runAudit;
+  if (runAuditId) {
+    const item = (state.lastResult.auditQueue ?? []).find((candidate) => candidate.programId === runAuditId);
+    if (!item) {
+      return;
+    }
+
+    target.textContent = "Running...";
+    target.setAttribute("disabled", "true");
+    resultSubtitle.textContent = "Running approved audit on local runtime...";
+
+    try {
+      const result = await postJson("/api/run-approved-audit", {
+        programId: item.programId,
+        name: item.name,
+        repoUrl: item.repoUrl
+      });
+      renderAll({
+        ...state.lastResult,
+        ...result,
+        auditQueue: state.lastResult.auditQueue,
+        rejected: state.lastResult.rejected
+      });
+      setActiveTab("audit");
+      setStageStatus("audit", "done");
+      resultSubtitle.textContent = `${result.findings?.length ?? 0} static hypothesis finding(s).`;
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      renderAll({
+        ...state.lastResult,
+        error: message
+      });
+      setActiveTab("raw");
+      setStageStatus("audit", "blocked");
+      resultSubtitle.textContent = "Approved audit could not run here.";
+    }
+    finally {
+      target.textContent = "Run on Mac mini";
+      target.removeAttribute("disabled");
+    }
+    return;
+  }
+
+  const detailsId = target.dataset.showDetails;
+  if (detailsId) {
+    const item = (state.lastResult.auditQueue ?? []).find((candidate) => candidate.programId === detailsId);
+    renderAll({
+      selected: item ?? null,
+      approvals: state.approvals,
+      note: "Use Run on Mac mini from the Approved tab to execute the local audit."
+    });
+    setActiveTab("raw");
   }
 });
 

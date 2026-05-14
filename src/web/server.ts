@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { GitHubDiscoverySeedListSchema } from "../core/schemas.js";
 import { auditLocalRepo } from "../audit/staticAudit.js";
 import { researchPipelineWorkflow } from "../workflows/researchPipeline.js";
@@ -9,6 +10,7 @@ const root = process.cwd();
 const publicDir = path.join(root, "public");
 const port = Number(process.env.PORT ?? 8787);
 const host = process.env.HOST ?? "0.0.0.0";
+const targetRoot = process.env.OBW_TARGET_ROOT ?? path.join(process.env.HOME ?? root, "obw-targets");
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, {
@@ -35,6 +37,58 @@ async function readRequestJson(request: IncomingMessage): Promise<unknown> {
 
   const raw = Buffer.concat(chunks).toString("utf8");
   return raw ? JSON.parse(raw) : {};
+}
+
+function safeDirectoryName(value: string): string {
+  return value.replace(/[^a-z0-9._-]/gi, "-").slice(0, 120);
+}
+
+function runCommand(command: string, args: string[], cwd: string): Promise<{
+  code: number | null;
+  stdout: string;
+  stderr: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      env: process.env
+    });
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+
+    child.stdout.on("data", (chunk) => stdout.push(Buffer.from(chunk)));
+    child.stderr.on("data", (chunk) => stderr.push(Buffer.from(chunk)));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      resolve({
+        code,
+        stdout: Buffer.concat(stdout).toString("utf8"),
+        stderr: Buffer.concat(stderr).toString("utf8")
+      });
+    });
+  });
+}
+
+async function cloneIfNeeded(repoUrl: string, directory: string): Promise<string[]> {
+  const notes: string[] = [];
+
+  try {
+    await readFile(path.join(directory, ".git", "HEAD"), "utf8");
+    notes.push("Repository already exists locally; skipped clone.");
+    return notes;
+  }
+  catch {
+    await mkdir(path.dirname(directory), { recursive: true });
+  }
+
+  const clone = await runCommand("git", ["clone", "--depth", "1", repoUrl, directory], root);
+  if (clone.code !== 0) {
+    throw new Error(`git clone failed: ${clone.stderr || clone.stdout}`);
+  }
+
+  notes.push("Repository cloned with depth=1.");
+  return notes;
 }
 
 async function serveStatic(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -97,6 +151,37 @@ async function handleApi(request: IncomingMessage, response: ServerResponse): Pr
 
     const result = await auditLocalRepo(body.repoPath);
     sendJson(response, 200, result);
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/run-approved-audit") {
+    const body = await readRequestJson(request) as {
+      programId?: unknown;
+      repoUrl?: unknown;
+      name?: unknown;
+    };
+
+    if (typeof body.programId !== "string" || typeof body.repoUrl !== "string") {
+      sendJson(response, 400, { error: "programId and repoUrl are required" });
+      return;
+    }
+
+    if (!body.repoUrl.startsWith("https://github.com/")) {
+      sendJson(response, 400, { error: "Only https://github.com repositories are supported for this local action." });
+      return;
+    }
+
+    const directory = path.join(targetRoot, safeDirectoryName(body.programId));
+    const cloneNotes = await cloneIfNeeded(body.repoUrl, directory);
+    const result = await auditLocalRepo(directory);
+
+    sendJson(response, 200, {
+      ...result,
+      programId: body.programId,
+      name: typeof body.name === "string" ? body.name : body.programId,
+      repoUrl: body.repoUrl,
+      notes: [...cloneNotes, ...result.notes]
+    });
     return;
   }
 
