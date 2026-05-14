@@ -73,9 +73,62 @@ export const GitHubDiscoverySeedSchema = z.object({
 
 export const GitHubDiscoverySeedListSchema = z.array(GitHubDiscoverySeedSchema);
 
+export const AuditQueueItemSchema = z.object({
+  programId: z.string().min(1),
+  name: z.string().min(1),
+  repoUrl: z.string().url(),
+  score: z.number().min(0).max(1),
+  signalQualityScore: z.number().min(0).max(1),
+  exploitabilityConfidenceFloor: z.number().min(0).max(1),
+  scopeUrl: z.string().url().optional(),
+  disclosureUrl: z.string().url().optional(),
+  requiresHumanApproval: z.boolean(),
+  safeNextStep: z.string().min(1),
+  warnings: z.array(z.string()).default([])
+});
+
+export const AuditQueueSchema = z.array(AuditQueueItemSchema);
+
+export const PipelineResultSchema = z.object({
+  generatedAt: z.string().datetime(),
+  discoveredCount: z.number().int().nonnegative(),
+  enrichedCount: z.number().int().nonnegative(),
+  triagedCount: z.number().int().nonnegative(),
+  auditQueue: AuditQueueSchema,
+  rejected: z.array(z.object({
+    programId: z.string().min(1),
+    name: z.string().min(1),
+    refusalReason: z.string().optional(),
+    safeNextStep: z.string().optional()
+  }))
+});
+
+export const LocalAuditFindingSchema = z.object({
+  ruleId: z.string().min(1),
+  title: z.string().min(1),
+  severity: z.enum(["info", "low", "medium", "high"]),
+  file: z.string().min(1),
+  line: z.number().int().positive(),
+  evidence: z.string().min(1),
+  rationale: z.string().min(1),
+  safeNextStep: z.string().min(1)
+});
+
+export const LocalAuditResultSchema = z.object({
+  generatedAt: z.string().datetime(),
+  repoPath: z.string().min(1),
+  filesScanned: z.number().int().nonnegative(),
+  findings: z.array(LocalAuditFindingSchema),
+  notes: z.array(z.string())
+});
+
 export type Program = z.infer<typeof ProgramSchema>;
 export type FindingCandidate = z.infer<typeof FindingCandidateSchema>;
 export type ObservedFact = z.infer<typeof ObservedFactSchema>;
 export type GitHubDiscoverySeed = z.infer<typeof GitHubDiscoverySeedSchema>;
+export type AuditQueueItem = z.infer<typeof AuditQueueItemSchema>;
+export type PipelineResult = z.infer<typeof PipelineResultSchema>;
+export type LocalAuditFinding = z.infer<typeof LocalAuditFindingSchema>;
+export type LocalAuditResult = z.infer<typeof LocalAuditResultSchema>;
 
 export const ProgramListSchema = z.array(ProgramSchema);

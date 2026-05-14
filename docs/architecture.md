@@ -5,6 +5,7 @@ Open Bounty Workbench is split into small packages under `src`.
 ## Modules
 
 - `core`: schemas, scoring, evidence models, and deterministic business logic.
+- `audit`: safe local-only static audit checks that produce hypotheses, not final reports.
 - `discovery`: external candidate discovery and enrichment adapters that produce unactionable candidates until official authorization is attached.
 - `policy`: safety gates and refusal decisions.
 - `workflows`: WDK-compatible workflow stubs.
@@ -18,8 +19,10 @@ Open Bounty Workbench is split into small packages under `src`.
 4. Verify scope and policy.
 5. Score each program.
 6. Rank by recommendation score.
-7. Store candidate finding evidence.
-8. Draft report only when validation status allows it.
+7. Create a human-approved audit queue.
+8. Run safe local-only static checks against approved repository checkouts.
+9. Store candidate finding evidence.
+10. Draft report only when validation status allows it.
 
 ## Vercel Workflow Mapping
 

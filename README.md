@@ -31,6 +31,16 @@ npm run triage:sample
 npm run report:sample
 ```
 
+## End-to-End Pipeline
+
+Run discovery, GitHub security-policy enrichment, triage, and audit queue generation:
+
+```bash
+npm run pipeline:sample
+```
+
+The audit queue still requires human approval before cloning or deeper local audit work.
+
 ## Discover Candidate Repos
 
 Discovery finds candidate repositories; it does not authorize testing. Candidates without an official scope URL or disclosure URL are marked as ambiguous and will fail the policy gate until a human attaches authorization.
@@ -46,6 +56,17 @@ npm run enrich:github:sample
 ```
 
 For higher GitHub API limits, set `GITHUB_TOKEN` locally or in CI. Do not commit tokens.
+
+## Local Static Audit
+
+Run safe, local-only static checks against a repository checkout:
+
+```bash
+npm run audit:local:self
+tsx src/cli/index.ts audit-local /path/to/approved/repo
+```
+
+Static audit results are hypotheses. They are not bounty-ready until reproduced, root-caused, patched, tested, and confirmed in scope.
 
 ## GitHub Safety Workflows
 
