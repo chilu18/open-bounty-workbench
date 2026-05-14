@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discoverGitHubPrograms, repositoryToProgram } from "../src/discovery/github.js";
+import { discoverGitHubPrograms, enrichGitHubPrograms, repositoryToProgram } from "../src/discovery/github.js";
 import { GitHubDiscoverySeedSchema } from "../src/core/schemas.js";
 
 const seed = GitHubDiscoverySeedSchema.parse({
@@ -69,5 +69,44 @@ describe("GitHub discovery", () => {
 
     expect(programs).toHaveLength(1);
     expect(programs[0].repoUrls).toEqual(["https://github.com/example/project"]);
+  });
+
+  it("promotes a repo only when SECURITY.md contains disclosure language", async () => {
+    const program = repositoryToProgram(seed, repository);
+    const securityPolicy = Buffer.from("## Security Policy\n\nPlease report a vulnerability privately.").toString("base64");
+
+    const enriched = await enrichGitHubPrograms([program], {
+      fetchImpl: async (url) => {
+        if (url.includes("/community/profile")) {
+          return {
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            json: async () => ({
+              files: {
+                license: { html_url: "https://github.com/example/project/blob/main/LICENSE" },
+                readme: { html_url: "https://github.com/example/project/blob/main/README.md" }
+              }
+            })
+          };
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          json: async () => ({
+            html_url: "https://github.com/example/project/security/policy",
+            encoding: "base64",
+            content: securityPolicy
+          })
+        };
+      }
+    });
+
+    expect(enriched[0].authorization).toBe("explicit");
+    expect(enriched[0].safeHarbor).toBe("partial");
+    expect(enriched[0].disclosureUrl).toBe("https://github.com/example/project/security/policy");
+    expect(enriched[0].targets[0].inScope).toBe(true);
   });
 });

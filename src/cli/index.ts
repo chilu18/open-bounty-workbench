@@ -7,12 +7,12 @@ import {
 } from "../core/schemas.js";
 import { rankPrograms } from "../core/scoring.js";
 import { draftReport } from "../core/report.js";
-import { discoverGitHubPrograms } from "../discovery/github.js";
+import { discoverGitHubPrograms, enrichGitHubPrograms } from "../discovery/github.js";
 
 const [, , command, file] = process.argv;
 
 function usage(): never {
-  console.error("Usage: obw <triage|report|discover-github> <json-file>");
+  console.error("Usage: obw <triage|report|discover-github|enrich-github> <json-file>");
   process.exit(1);
 }
 
@@ -36,6 +36,13 @@ else if (command === "discover-github") {
     token: process.env.GITHUB_TOKEN
   });
   console.log(JSON.stringify(programs, null, 2));
+}
+else if (command === "enrich-github") {
+  const programs = ProgramListSchema.parse(json);
+  const enriched = await enrichGitHubPrograms(programs, {
+    token: process.env.GITHUB_TOKEN
+  });
+  console.log(JSON.stringify(enriched, null, 2));
 }
 else {
   usage();

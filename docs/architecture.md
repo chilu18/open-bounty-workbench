@@ -5,7 +5,7 @@ Open Bounty Workbench is split into small packages under `src`.
 ## Modules
 
 - `core`: schemas, scoring, evidence models, and deterministic business logic.
-- `discovery`: external candidate discovery adapters that produce unactionable candidates until official authorization is attached.
+- `discovery`: external candidate discovery and enrichment adapters that produce unactionable candidates until official authorization is attached.
 - `policy`: safety gates and refusal decisions.
 - `workflows`: WDK-compatible workflow stubs.
 - `cli`: local command line entrypoint.
@@ -13,12 +13,13 @@ Open Bounty Workbench is split into small packages under `src`.
 ## MVP Data Flow
 
 1. Discover or load candidate program records.
-2. Require official authorization metadata before treating a target as in scope.
-3. Verify scope and policy.
-4. Score each program.
-5. Rank by recommendation score.
-6. Store candidate finding evidence.
-7. Draft report only when validation status allows it.
+2. Enrich candidates with official repository metadata, such as security policy links.
+3. Require official authorization metadata before treating a target as in scope.
+4. Verify scope and policy.
+5. Score each program.
+6. Rank by recommendation score.
+7. Store candidate finding evidence.
+8. Draft report only when validation status allows it.
 
 ## Vercel Workflow Mapping
 

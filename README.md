@@ -39,6 +39,12 @@ Discovery finds candidate repositories; it does not authorize testing. Candidate
 npm run discover:github:sample
 ```
 
+Enrich discovered candidates with GitHub community/security-policy metadata:
+
+```bash
+npm run enrich:github:sample
+```
+
 For higher GitHub API limits, set `GITHUB_TOKEN` locally or in CI. Do not commit tokens.
 
 ## GitHub Safety Workflows

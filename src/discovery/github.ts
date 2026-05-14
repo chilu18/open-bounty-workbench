@@ -16,6 +16,23 @@ type GitHubSearchResponse = {
   items: GitHubSearchRepository[];
 };
 
+type GitHubCommunityProfile = {
+  files?: {
+    license?: {
+      html_url?: string;
+    } | null;
+    readme?: {
+      html_url?: string;
+    } | null;
+  };
+};
+
+type GitHubContentFile = {
+  html_url?: string;
+  content?: string;
+  encoding?: string;
+};
+
 export type FetchLike = (url: string, init?: {
   headers?: Record<string, string>;
 }) => Promise<{
@@ -71,6 +88,55 @@ export function repositoryToProgram(seed: GitHubDiscoverySeed, repository: GitHu
   };
 }
 
+function githubRepoPath(repoUrl: string): string | null {
+  try {
+    const url = new URL(repoUrl);
+    if (url.hostname !== "github.com") {
+      return null;
+    }
+
+    const [owner, repo] = url.pathname.replace(/^\/|\/$/g, "").split("/");
+    if (!owner || !repo) {
+      return null;
+    }
+
+    return `${owner}/${repo.replace(/\.git$/, "")}`;
+  }
+  catch {
+    return null;
+  }
+}
+
+function githubHeaders(token?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "open-bounty-workbench"
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+function decodeGitHubContent(file: GitHubContentFile): string {
+  if (!file.content || file.encoding !== "base64") {
+    return "";
+  }
+
+  return Buffer.from(file.content.replace(/\n/g, ""), "base64").toString("utf8");
+}
+
+function hasDisclosureSignal(securityPolicyText: string): boolean {
+  return /\b(report (a )?vulnerability|security policy|responsible disclosure|coordinated disclosure|bug bounty|hackerone|bugcrowd|intigriti)\b/i
+    .test(securityPolicyText);
+}
+
+function hasPaidBountySignal(securityPolicyText: string): boolean {
+  return /\b(bug bounty|bounty|hackerone|bugcrowd|intigriti|yeswehack)\b/i.test(securityPolicyText);
+}
+
 export async function discoverGitHubPrograms(
   seeds: GitHubDiscoverySeed[],
   options: {
@@ -88,16 +154,7 @@ export async function discoverGitHubPrograms(
     url.searchParams.set("order", "desc");
     url.searchParams.set("per_page", String(seed.maxResults));
 
-    const headers: Record<string, string> = {
-      "Accept": "application/vnd.github+json",
-      "User-Agent": "open-bounty-workbench"
-    };
-
-    if (options.token) {
-      headers.Authorization = `Bearer ${options.token}`;
-    }
-
-    const response = await fetchImpl(url.toString(), { headers });
+    const response = await fetchImpl(url.toString(), { headers: githubHeaders(options.token) });
     if (!response.ok) {
       throw new Error(`GitHub search failed for seed "${seed.id}": ${response.status} ${response.statusText}`);
     }
@@ -111,4 +168,85 @@ export async function discoverGitHubPrograms(
   }
 
   return programs;
+}
+
+export async function enrichGitHubPrograms(
+  programs: Program[],
+  options: {
+    fetchImpl?: FetchLike;
+    token?: string;
+  } = {}
+): Promise<Program[]> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const enriched: Program[] = [];
+
+  for (const program of programs) {
+    const repoUrl = program.repoUrls.find((candidate) => candidate.includes("github.com/"));
+    const repoPath = repoUrl ? githubRepoPath(repoUrl) : null;
+
+    if (!repoPath) {
+      enriched.push(program);
+      continue;
+    }
+
+    const communityUrl = `https://api.github.com/repos/${repoPath}/community/profile`;
+    const securityUrl = `https://api.github.com/repos/${repoPath}/contents/SECURITY.md`;
+
+    const [communityResponse, securityResponse] = await Promise.all([
+      fetchImpl(communityUrl, { headers: githubHeaders(options.token) }),
+      fetchImpl(securityUrl, { headers: githubHeaders(options.token) })
+    ]);
+
+    const notes = [program.notes];
+    let nextProgram = { ...program };
+    let securityPolicyText = "";
+    let securityPolicyHtmlUrl: string | undefined;
+
+    if (communityResponse.ok) {
+      const community = await communityResponse.json() as GitHubCommunityProfile;
+      if (community.files?.license?.html_url) {
+        notes.push(`license=${community.files.license.html_url}`);
+      }
+      if (community.files?.readme?.html_url) {
+        notes.push(`readme=${community.files.readme.html_url}`);
+      }
+    }
+
+    if (securityResponse.ok) {
+      const securityPolicy = await securityResponse.json() as GitHubContentFile;
+      securityPolicyText = decodeGitHubContent(securityPolicy);
+      securityPolicyHtmlUrl = securityPolicy.html_url;
+      notes.push(`security_policy=${securityPolicyHtmlUrl ?? securityUrl}`);
+    }
+
+    if (securityPolicyText && hasDisclosureSignal(securityPolicyText)) {
+      nextProgram = {
+        ...nextProgram,
+        disclosureUrl: nextProgram.disclosureUrl ?? securityPolicyHtmlUrl,
+        authorization: nextProgram.authorization === "none" ? "ambiguous" : "explicit",
+        safeHarbor: nextProgram.safeHarbor === "unknown" ? "partial" : nextProgram.safeHarbor,
+        paid: nextProgram.paid || hasPaidBountySignal(securityPolicyText),
+        targets: nextProgram.targets.map((target) => target.type === "repo"
+          ? {
+              ...target,
+              inScope: true,
+              notes: `${target.notes} enriched_by=github_security_policy`
+            }
+          : target)
+      };
+    }
+    else if (securityPolicyHtmlUrl) {
+      notes.push("security policy found, but disclosure authorization language was not strong enough to promote scope");
+    }
+    else {
+      notes.push("no SECURITY.md discovered by GitHub contents API");
+    }
+
+    enriched.push({
+      ...nextProgram,
+      notes: notes.filter(Boolean).join(" ")
+    });
+  }
+
+  return enriched;
 }
