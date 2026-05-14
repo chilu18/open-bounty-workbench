@@ -304,6 +304,11 @@ input {
   color: #ffffff;
 }
 
+.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 .tab-panel {
   display: none;
 }
@@ -341,6 +346,17 @@ input {
   margin: 12px 0 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.approved-card {
+  border-color: rgba(23, 107, 91, 0.35);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .chip {
@@ -401,6 +417,9 @@ dd {
 }
 
 code {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   border-radius: 4px;
   background: var(--surface-2);
   padding: 2px 5px;
@@ -444,6 +463,10 @@ code {
 
   button {
     width: 100%;
+  }
+
+  .actions {
+    flex-direction: column;
   }
 
   .status {

@@ -81,12 +81,14 @@
 
         <div class="tabs" role="tablist" aria-label="Results">
           <button class="tab active" type="button" data-tab="queue">Audit Queue</button>
+          <button class="tab" type="button" data-tab="approved">Approved</button>
           <button class="tab" type="button" data-tab="rejected">Rejected</button>
           <button class="tab" type="button" data-tab="audit">Audit Findings</button>
           <button class="tab" type="button" data-tab="raw">Raw JSON</button>
         </div>
 
         <div class="tab-panel active" id="queuePanel"></div>
+        <div class="tab-panel" id="approvedPanel"></div>
         <div class="tab-panel" id="rejectedPanel"></div>
         <div class="tab-panel" id="auditPanel"></div>
         <pre class="tab-panel raw-panel" id="rawPanel">{}</pre>

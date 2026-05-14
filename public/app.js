@@ -16,6 +16,7 @@ const defaultSeeds = [
 const state = {
   activeTab: "queue",
   lastResult: {},
+  approvals: loadApprovals(),
   pipelineRunning: false,
   auditRunning: false
 };
@@ -29,6 +30,7 @@ const clearButton = document.querySelector("#clearButton");
 const resultSubtitle = document.querySelector("#resultSubtitle");
 const rawPanel = document.querySelector("#rawPanel");
 const queuePanel = document.querySelector("#queuePanel");
+const approvedPanel = document.querySelector("#approvedPanel");
 const rejectedPanel = document.querySelector("#rejectedPanel");
 const auditPanel = document.querySelector("#auditPanel");
 const tabs = [...document.querySelectorAll(".tab")];
@@ -42,6 +44,19 @@ const metrics = {
 };
 
 seedInput.value = JSON.stringify(defaultSeeds, null, 2);
+
+function loadApprovals() {
+  try {
+    return JSON.parse(localStorage.getItem("obw.approvals") ?? "{}");
+  }
+  catch {
+    return {};
+  }
+}
+
+function saveApprovals() {
+  localStorage.setItem("obw.approvals", JSON.stringify(state.approvals));
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -92,12 +107,14 @@ function emptyState(title, detail) {
 }
 
 function renderQueue(queue = []) {
-  if (queue.length === 0) {
+  const pending = queue.filter((item) => !state.approvals[item.programId]);
+
+  if (pending.length === 0) {
     queuePanel.innerHTML = emptyState("No audit queue items", "Run the pipeline or use seeds with stronger authorization signals.");
     return;
   }
 
-  queuePanel.innerHTML = queue.map((item) => `
+  queuePanel.innerHTML = pending.map((item) => `
     <article class="item-card">
       <div class="item-main">
         <div>
@@ -111,8 +128,45 @@ function renderQueue(queue = []) {
         <div><dt>Disclosure</dt><dd>${item.disclosureUrl ? `<a href="${escapeHtml(item.disclosureUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.disclosureUrl)}</a>` : "Not attached"}</dd></div>
         <div><dt>Next step</dt><dd>${escapeHtml(item.safeNextStep)}</dd></div>
       </dl>
+      <div class="actions">
+        <button type="button" data-approve="${escapeHtml(item.programId)}">Approve local audit</button>
+      </div>
     </article>
   `).join("");
+}
+
+function renderApproved(queue = []) {
+  const approved = queue.filter((item) => state.approvals[item.programId]);
+
+  if (approved.length === 0) {
+    approvedPanel.innerHTML = emptyState("No approved items", "Approve a queued candidate to get the local audit commands.");
+    return;
+  }
+
+  approvedPanel.innerHTML = approved.map((item) => {
+    const directoryName = item.programId.replace(/[^a-z0-9._-]/gi, "-");
+    const command = `mkdir -p ~/obw-targets && cd ~/obw-targets && git clone ${item.repoUrl} ${directoryName} && cd /home/hs-chilu/open-bounty-workbench && npx tsx src/cli/index.ts audit-local ~/obw-targets/${directoryName}`;
+
+    return `
+      <article class="item-card approved-card">
+        <div class="item-main">
+          <div>
+            <span class="chip success">Approved</span>
+            <h3>${escapeHtml(item.name)}</h3>
+          </div>
+          <button class="secondary" type="button" data-unapprove="${escapeHtml(item.programId)}">Undo</button>
+        </div>
+        <dl>
+          <div><dt>Repo</dt><dd><a href="${escapeHtml(item.repoUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.repoUrl)}</a></dd></div>
+          <div><dt>Approved</dt><dd>${escapeHtml(state.approvals[item.programId].approvedAt)}</dd></div>
+          <div><dt>Mac mini</dt><dd><code>${escapeHtml(command)}</code></dd></div>
+        </dl>
+        <div class="actions">
+          <button type="button" data-copy-command="${escapeHtml(command)}">Copy command</button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderRejected(rejected = []) {
@@ -167,6 +221,7 @@ function renderAll(result) {
   state.lastResult = result;
   renderMetrics(result);
   renderQueue(result.auditQueue ?? []);
+  renderApproved(result.auditQueue ?? []);
   renderRejected(result.rejected ?? []);
   renderAudit(result);
   renderRaw(result);
@@ -276,6 +331,44 @@ auditForm.addEventListener("submit", async (event) => {
 for (const tab of tabs) {
   tab.addEventListener("click", () => setActiveTab(tab.dataset.tab));
 }
+
+document.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const approveId = target.dataset.approve;
+  if (approveId) {
+    state.approvals[approveId] = {
+      approvedAt: new Date().toISOString()
+    };
+    saveApprovals();
+    renderAll(state.lastResult);
+    setActiveTab("approved");
+    resultSubtitle.textContent = "Candidate approved for local-only audit.";
+    return;
+  }
+
+  const unapproveId = target.dataset.unapprove;
+  if (unapproveId) {
+    delete state.approvals[unapproveId];
+    saveApprovals();
+    renderAll(state.lastResult);
+    setActiveTab("queue");
+    resultSubtitle.textContent = "Approval removed.";
+    return;
+  }
+
+  const copyCommand = target.dataset.copyCommand;
+  if (copyCommand) {
+    await navigator.clipboard.writeText(copyCommand);
+    target.textContent = "Copied";
+    setTimeout(() => {
+      target.textContent = "Copy command";
+    }, 1200);
+  }
+});
 
 clearButton.addEventListener("click", () => {
   resetStages();
