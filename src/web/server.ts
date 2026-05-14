@@ -127,6 +127,8 @@ async function handleApi(request: IncomingMessage, response: ServerResponse): Pr
     sendJson(response, 200, {
       ok: true,
       service: "open-bounty-workbench",
+      runtime: "local",
+      canRunApprovedAudits: true,
       generatedAt: new Date().toISOString()
     });
     return;

@@ -28,6 +28,7 @@ export default {
         ok: true,
         service: "open-bounty-workbench",
         runtime: "cloudflare",
+        canRunApprovedAudits: false,
         generatedAt: new Date().toISOString()
       });
     }

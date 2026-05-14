@@ -17,6 +17,8 @@ const state = {
   activeTab: "queue",
   lastResult: {},
   approvals: loadApprovals(),
+  runtime: "unknown",
+  canRunApprovedAudits: false,
   pipelineRunning: false,
   auditRunning: false
 };
@@ -27,6 +29,7 @@ const pipelineForm = document.querySelector("#pipelineForm");
 const auditForm = document.querySelector("#auditForm");
 const repoPathInput = document.querySelector("#repoPathInput");
 const clearButton = document.querySelector("#clearButton");
+const runtimeNotice = document.querySelector("#runtimeNotice");
 const resultSubtitle = document.querySelector("#resultSubtitle");
 const rawPanel = document.querySelector("#rawPanel");
 const queuePanel = document.querySelector("#queuePanel");
@@ -144,6 +147,10 @@ function renderApproved(queue = []) {
   }
 
   approvedPanel.innerHTML = approved.map((item) => {
+    const runButton = state.canRunApprovedAudits
+      ? `<button type="button" data-run-audit="${escapeHtml(item.programId)}">Run on this machine</button>`
+      : `<button type="button" disabled title="Open http://macmini-cf:8787 to run local audits">Open Mac mini UI to run</button>`;
+
     return `
       <article class="item-card approved-card">
         <div class="item-main">
@@ -159,7 +166,7 @@ function renderApproved(queue = []) {
           <div><dt>Action</dt><dd>Run a local-only audit on the Mac mini runtime.</dd></div>
         </dl>
         <div class="actions">
-          <button type="button" data-run-audit="${escapeHtml(item.programId)}">Run on Mac mini</button>
+          ${runButton}
           <button class="secondary" type="button" data-show-details="${escapeHtml(item.programId)}">Details</button>
         </div>
       </article>
@@ -259,12 +266,21 @@ async function checkHealth() {
     if (!response.ok) {
       throw new Error("unhealthy");
     }
-    healthStatus.textContent = `Online: ${payload.runtime ?? "local"}`;
+    state.runtime = payload.runtime ?? "local";
+    state.canRunApprovedAudits = Boolean(payload.canRunApprovedAudits);
+    healthStatus.textContent = `Online: ${state.runtime}`;
     healthStatus.className = "status ok";
+    runtimeNotice.className = state.canRunApprovedAudits ? "runtime-notice local" : "runtime-notice hosted";
+    runtimeNotice.textContent = state.canRunApprovedAudits
+      ? "This runtime can clone approved GitHub repos and run local static audits."
+      : "Hosted runtime: discovery and triage are available here. To run approved local audits, open http://macmini-cf:8787.";
+    renderAll(state.lastResult);
   }
   catch {
     healthStatus.textContent = "Offline";
     healthStatus.className = "status error";
+    runtimeNotice.className = "runtime-notice hosted";
+    runtimeNotice.textContent = "Runtime status unavailable.";
   }
 }
 
@@ -387,10 +403,7 @@ document.addEventListener("click", async (event) => {
     }
     catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      renderAll({
-        ...state.lastResult,
-        error: message
-      });
+      renderRaw({ error: message, runtime: state.runtime, safeNextStep: "Open http://macmini-cf:8787 to run approved local audits." });
       setActiveTab("raw");
       setStageStatus("audit", "blocked");
       resultSubtitle.textContent = "Approved audit could not run here.";

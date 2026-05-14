@@ -7,6 +7,7 @@ export default function handler(_request: IncomingMessage, response: ServerRespo
     ok: true,
     service: "open-bounty-workbench",
     runtime: "vercel",
+    canRunApprovedAudits: false,
     generatedAt: new Date().toISOString()
   }, null, 2));
 }
