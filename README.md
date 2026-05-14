@@ -42,6 +42,15 @@ npm run web
 
 By default it listens on `http://localhost:8787`. Set `PORT` or `HOST` to change the bind address.
 
+## Hosted Deployments
+
+The hosted Vercel and Cloudflare runtimes support the pipeline API and static UI. Local filesystem audit remains available only on the local/Mac mini runtime.
+
+```bash
+npm run deploy:vercel
+npm run deploy:cloudflare
+```
+
 ## End-to-End Pipeline
 
 Run discovery, GitHub security-policy enrichment, triage, and audit queue generation:

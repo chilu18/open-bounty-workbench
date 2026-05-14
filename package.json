@@ -18,16 +18,20 @@
     "enrich:github:sample": "tsx src/cli/index.ts enrich-github examples/programs.sample.json",
     "pipeline:sample": "tsx src/cli/index.ts pipeline examples/github-discovery.sample.json",
     "audit:local:self": "tsx src/cli/index.ts audit-local .",
-    "web": "tsx src/web/server.ts"
+    "web": "tsx src/web/server.ts",
+    "deploy:vercel": "vercel --prod --yes",
+    "deploy:cloudflare": "wrangler deploy"
   },
   "dependencies": {
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260511.1",
     "@types/node": "^20.17.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "wrangler": "^4.91.0"
   },
   "engines": {
     "node": ">=20"

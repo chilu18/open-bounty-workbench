@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "open-bounty-workbench-backup",
+  "main": "src/cloudflare/worker.ts",
+  "compatibility_date": "2026-05-14",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
