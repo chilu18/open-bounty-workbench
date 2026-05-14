@@ -53,8 +53,29 @@ export const FindingCandidateSchema = z.object({
   confidence: z.number().min(0).max(1)
 });
 
+export const GitHubDiscoverySeedSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  query: z.string().min(1),
+  platform: z.string().min(1).default("github"),
+  programUrl: z.string().url().optional(),
+  scopeUrl: z.string().url().optional(),
+  disclosureUrl: z.string().url().optional(),
+  paid: z.boolean().default(false),
+  safeHarbor: z.enum(["explicit", "partial", "unknown"]).default("unknown"),
+  allowsLocalTesting: z.boolean().default(true),
+  allowsLiveTesting: z.boolean().default(false),
+  requiresEnrollment: z.boolean().default(false),
+  outOfScope: z.array(z.string()).default([]),
+  maxResults: z.number().int().positive().max(50).default(10),
+  notes: z.string().default("")
+});
+
+export const GitHubDiscoverySeedListSchema = z.array(GitHubDiscoverySeedSchema);
+
 export type Program = z.infer<typeof ProgramSchema>;
 export type FindingCandidate = z.infer<typeof FindingCandidateSchema>;
 export type ObservedFact = z.infer<typeof ObservedFactSchema>;
+export type GitHubDiscoverySeed = z.infer<typeof GitHubDiscoverySeedSchema>;
 
 export const ProgramListSchema = z.array(ProgramSchema);

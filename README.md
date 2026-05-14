@@ -31,6 +31,16 @@ npm run triage:sample
 npm run report:sample
 ```
 
+## Discover Candidate Repos
+
+Discovery finds candidate repositories; it does not authorize testing. Candidates without an official scope URL or disclosure URL are marked as ambiguous and will fail the policy gate until a human attaches authorization.
+
+```bash
+npm run discover:github:sample
+```
+
+For higher GitHub API limits, set `GITHUB_TOKEN` locally or in CI. Do not commit tokens.
+
 ## GitHub Safety Workflows
 
 The repository includes GitHub Actions for:
@@ -48,6 +58,7 @@ npm run scan:secrets
 
 ```text
 Program Scout
+  -> Candidate Repo Discovery
   -> Scope Verification
     -> Economic Triage
       -> Local Repo Audit Queue

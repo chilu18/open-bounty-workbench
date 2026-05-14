@@ -13,7 +13,8 @@
     "scan:secrets": "node scripts/secret-scan.mjs",
     "check": "npm run build && npm run test && npm run scan:secrets",
     "triage:sample": "tsx src/cli/index.ts triage examples/programs.sample.json",
-    "report:sample": "tsx src/cli/index.ts report examples/finding.sample.json"
+    "report:sample": "tsx src/cli/index.ts report examples/finding.sample.json",
+    "discover:github:sample": "tsx src/cli/index.ts discover-github examples/github-discovery.sample.json"
   },
   "dependencies": {
     "zod": "^3.23.8"

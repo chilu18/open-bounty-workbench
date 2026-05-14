@@ -1,0 +1,14 @@
+[
+  {
+    "id": "oss-security-local",
+    "name": "Open-source local audit candidates",
+    "query": "topic:security language:TypeScript stars:>500",
+    "paid": false,
+    "safeHarbor": "unknown",
+    "allowsLocalTesting": true,
+    "allowsLiveTesting": false,
+    "requiresEnrollment": false,
+    "maxResults": 5,
+    "notes": "Candidate discovery only. Attach an official security policy, bounty page, or maintainer authorization before audit progression."
+  }
+]
