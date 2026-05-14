@@ -13,23 +13,172 @@ const defaultSeeds = [
   }
 ];
 
+const state = {
+  activeTab: "queue",
+  lastResult: {},
+  pipelineRunning: false,
+  auditRunning: false
+};
+
 const healthStatus = document.querySelector("#healthStatus");
 const seedInput = document.querySelector("#seedInput");
 const pipelineForm = document.querySelector("#pipelineForm");
 const auditForm = document.querySelector("#auditForm");
 const repoPathInput = document.querySelector("#repoPathInput");
-const output = document.querySelector("#output");
 const clearButton = document.querySelector("#clearButton");
+const resultSubtitle = document.querySelector("#resultSubtitle");
+const rawPanel = document.querySelector("#rawPanel");
+const queuePanel = document.querySelector("#queuePanel");
+const rejectedPanel = document.querySelector("#rejectedPanel");
+const auditPanel = document.querySelector("#auditPanel");
+const tabs = [...document.querySelectorAll(".tab")];
+const stages = [...document.querySelectorAll(".stage")];
+
+const metrics = {
+  discovered: document.querySelector("#metricDiscovered"),
+  enriched: document.querySelector("#metricEnriched"),
+  queued: document.querySelector("#metricQueued"),
+  rejected: document.querySelector("#metricRejected")
+};
 
 seedInput.value = JSON.stringify(defaultSeeds, null, 2);
 
-function setOutput(value) {
-  output.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function setBusy(form, busy) {
   for (const button of form.querySelectorAll("button")) {
     button.disabled = busy;
+  }
+}
+
+function setStageStatus(stageName, status) {
+  const stage = stages.find((candidate) => candidate.dataset.stage === stageName);
+  if (!stage) {
+    return;
+  }
+  stage.classList.remove("active", "done", "blocked");
+  if (status) {
+    stage.classList.add(status);
+  }
+}
+
+function resetStages() {
+  for (const stage of stages) {
+    stage.classList.remove("active", "done", "blocked");
+  }
+}
+
+function renderMetrics(result) {
+  metrics.discovered.textContent = String(result.discoveredCount ?? 0);
+  metrics.enriched.textContent = String(result.enrichedCount ?? 0);
+  metrics.queued.textContent = String(result.auditQueue?.length ?? 0);
+  metrics.rejected.textContent = String(result.rejected?.length ?? 0);
+}
+
+function emptyState(title, detail) {
+  return `
+    <div class="empty">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+  `;
+}
+
+function renderQueue(queue = []) {
+  if (queue.length === 0) {
+    queuePanel.innerHTML = emptyState("No audit queue items", "Run the pipeline or use seeds with stronger authorization signals.");
+    return;
+  }
+
+  queuePanel.innerHTML = queue.map((item) => `
+    <article class="item-card">
+      <div class="item-main">
+        <div>
+          <span class="chip success">Ready for approval</span>
+          <h3>${escapeHtml(item.name)}</h3>
+        </div>
+        <strong class="score">${Math.round((item.score ?? 0) * 100)}%</strong>
+      </div>
+      <dl>
+        <div><dt>Repo</dt><dd><a href="${escapeHtml(item.repoUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.repoUrl)}</a></dd></div>
+        <div><dt>Disclosure</dt><dd>${item.disclosureUrl ? `<a href="${escapeHtml(item.disclosureUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.disclosureUrl)}</a>` : "Not attached"}</dd></div>
+        <div><dt>Next step</dt><dd>${escapeHtml(item.safeNextStep)}</dd></div>
+      </dl>
+    </article>
+  `).join("");
+}
+
+function renderRejected(rejected = []) {
+  if (rejected.length === 0) {
+    rejectedPanel.innerHTML = emptyState("No rejected candidates", "Rejected items will appear here when scope or signal is insufficient.");
+    return;
+  }
+
+  rejectedPanel.innerHTML = rejected.map((item) => `
+    <article class="item-card">
+      <div class="item-main">
+        <div>
+          <span class="chip warning">${escapeHtml(item.refusalReason ?? "blocked")}</span>
+          <h3>${escapeHtml(item.name)}</h3>
+        </div>
+      </div>
+      <p>${escapeHtml(item.safeNextStep ?? "Add authorization evidence before continuing.")}</p>
+    </article>
+  `).join("");
+}
+
+function renderAudit(result) {
+  const findings = result.findings ?? [];
+  if (!Array.isArray(findings) || findings.length === 0) {
+    auditPanel.innerHTML = emptyState("No audit findings", "Run a local audit on an approved checkout to populate this view.");
+    return;
+  }
+
+  auditPanel.innerHTML = findings.map((finding) => `
+    <article class="item-card">
+      <div class="item-main">
+        <div>
+          <span class="chip ${finding.severity === "high" ? "danger" : "warning"}">${escapeHtml(finding.severity)}</span>
+          <h3>${escapeHtml(finding.title)}</h3>
+        </div>
+        <strong class="rule">${escapeHtml(finding.ruleId)}</strong>
+      </div>
+      <dl>
+        <div><dt>Location</dt><dd>${escapeHtml(finding.file)}:${escapeHtml(finding.line)}</dd></div>
+        <div><dt>Evidence</dt><dd><code>${escapeHtml(finding.evidence)}</code></dd></div>
+        <div><dt>Next step</dt><dd>${escapeHtml(finding.safeNextStep)}</dd></div>
+      </dl>
+    </article>
+  `).join("");
+}
+
+function renderRaw(result) {
+  rawPanel.textContent = JSON.stringify(result, null, 2);
+}
+
+function renderAll(result) {
+  state.lastResult = result;
+  renderMetrics(result);
+  renderQueue(result.auditQueue ?? []);
+  renderRejected(result.rejected ?? []);
+  renderAudit(result);
+  renderRaw(result);
+}
+
+function setActiveTab(tabName) {
+  state.activeTab = tabName;
+  for (const tab of tabs) {
+    tab.classList.toggle("active", tab.dataset.tab === tabName);
+  }
+  for (const panel of document.querySelectorAll(".tab-panel")) {
+    panel.classList.toggle("active", panel.id === `${tabName}Panel`);
   }
 }
 
@@ -53,10 +202,11 @@ async function postJson(url, body) {
 async function checkHealth() {
   try {
     const response = await fetch("/api/health");
+    const payload = await response.json();
     if (!response.ok) {
       throw new Error("unhealthy");
     }
-    healthStatus.textContent = "Online";
+    healthStatus.textContent = `Online: ${payload.runtime ?? "local"}`;
     healthStatus.className = "status ok";
   }
   catch {
@@ -68,15 +218,28 @@ async function checkHealth() {
 pipelineForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setBusy(pipelineForm, true);
-  setOutput("Running pipeline...");
+  resetStages();
+  setStageStatus("discover", "active");
+  resultSubtitle.textContent = "Pipeline running...";
 
   try {
     const seeds = JSON.parse(seedInput.value);
     const result = await postJson("/api/pipeline", { seeds });
-    setOutput(result);
+    setStageStatus("discover", "done");
+    setStageStatus("enrich", "done");
+    setStageStatus("triage", "done");
+    setStageStatus("approve", result.auditQueue?.length ? "active" : "blocked");
+    renderAll(result);
+    setActiveTab(result.auditQueue?.length ? "queue" : "rejected");
+    resultSubtitle.textContent = `${result.auditQueue?.length ?? 0} candidate(s) waiting for human approval.`;
   }
   catch (error) {
-    setOutput({ error: error instanceof Error ? error.message : "Unknown error" });
+    resetStages();
+    setStageStatus("discover", "blocked");
+    const message = error instanceof Error ? error.message : "Unknown error";
+    renderAll({ error: message });
+    setActiveTab("raw");
+    resultSubtitle.textContent = "Pipeline failed.";
   }
   finally {
     setBusy(pipelineForm, false);
@@ -86,22 +249,40 @@ pipelineForm.addEventListener("submit", async (event) => {
 auditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setBusy(auditForm, true);
-  setOutput("Running local static audit...");
+  setStageStatus("audit", "active");
+  resultSubtitle.textContent = "Local static audit running...";
 
   try {
     const result = await postJson("/api/audit-local", {
       repoPath: repoPathInput.value
     });
-    setOutput(result);
+    setStageStatus("audit", "done");
+    renderAll(result);
+    setActiveTab("audit");
+    resultSubtitle.textContent = `${result.findings?.length ?? 0} static hypothesis finding(s).`;
   }
   catch (error) {
-    setOutput({ error: error instanceof Error ? error.message : "Unknown error" });
+    setStageStatus("audit", "blocked");
+    const message = error instanceof Error ? error.message : "Unknown error";
+    renderAll({ error: message });
+    setActiveTab("raw");
+    resultSubtitle.textContent = "Local audit unavailable or failed.";
   }
   finally {
     setBusy(auditForm, false);
   }
 });
 
-clearButton.addEventListener("click", () => setOutput({}));
+for (const tab of tabs) {
+  tab.addEventListener("click", () => setActiveTab(tab.dataset.tab));
+}
 
+clearButton.addEventListener("click", () => {
+  resetStages();
+  renderAll({});
+  setActiveTab("queue");
+  resultSubtitle.textContent = "Run a pipeline to populate the queue.";
+});
+
+renderAll({});
 void checkHealth();

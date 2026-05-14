@@ -16,10 +16,40 @@
         <div class="status" id="healthStatus">Checking</div>
       </header>
 
+      <section class="stage-strip" aria-label="Pipeline stages">
+        <div class="stage" data-stage="discover"><span>1</span><strong>Discover</strong></div>
+        <div class="stage" data-stage="enrich"><span>2</span><strong>Enrich</strong></div>
+        <div class="stage" data-stage="triage"><span>3</span><strong>Triage</strong></div>
+        <div class="stage" data-stage="approve"><span>4</span><strong>Approve</strong></div>
+        <div class="stage" data-stage="audit"><span>5</span><strong>Audit</strong></div>
+      </section>
+
+      <section class="metrics" aria-label="Run summary">
+        <div class="metric">
+          <span>Discovered</span>
+          <strong id="metricDiscovered">0</strong>
+        </div>
+        <div class="metric">
+          <span>Enriched</span>
+          <strong id="metricEnriched">0</strong>
+        </div>
+        <div class="metric">
+          <span>Queued</span>
+          <strong id="metricQueued">0</strong>
+        </div>
+        <div class="metric">
+          <span>Rejected</span>
+          <strong id="metricRejected">0</strong>
+        </div>
+      </section>
+
       <section class="grid">
         <form class="panel" id="pipelineForm">
           <div class="panel-header">
-            <h2>Pipeline</h2>
+            <div>
+              <h2>Pipeline</h2>
+              <p class="subtle">Find, enrich, and rank candidates.</p>
+            </div>
             <button type="submit">Run</button>
           </div>
           <label for="seedInput">GitHub discovery seeds</label>
@@ -28,21 +58,38 @@
 
         <form class="panel" id="auditForm">
           <div class="panel-header">
-            <h2>Local Audit</h2>
+            <div>
+              <h2>Local Audit</h2>
+              <p class="subtle">Static checks on approved checkouts.</p>
+            </div>
             <button type="submit">Scan</button>
           </div>
           <label for="repoPathInput">Approved local repo path</label>
           <input id="repoPathInput" type="text" value="." autocomplete="off">
-          <p class="hint">Runs local static checks only. Findings are hypotheses until reproduced and validated.</p>
+          <p class="hint">Hosted Vercel and Cloudflare cannot inspect local paths. Use this from the Mac mini/local runtime for filesystem audit.</p>
         </form>
       </section>
 
       <section class="results">
         <div class="result-header">
-          <h2>Results</h2>
+          <div>
+            <h2>Workspace</h2>
+            <p class="subtle" id="resultSubtitle">Run a pipeline to populate the queue.</p>
+          </div>
           <button id="clearButton" type="button">Clear</button>
         </div>
-        <pre id="output">{}</pre>
+
+        <div class="tabs" role="tablist" aria-label="Results">
+          <button class="tab active" type="button" data-tab="queue">Audit Queue</button>
+          <button class="tab" type="button" data-tab="rejected">Rejected</button>
+          <button class="tab" type="button" data-tab="audit">Audit Findings</button>
+          <button class="tab" type="button" data-tab="raw">Raw JSON</button>
+        </div>
+
+        <div class="tab-panel active" id="queuePanel"></div>
+        <div class="tab-panel" id="rejectedPanel"></div>
+        <div class="tab-panel" id="auditPanel"></div>
+        <pre class="tab-panel raw-panel" id="rawPanel">{}</pre>
       </section>
     </main>
     <script src="/app.js" type="module"></script>
