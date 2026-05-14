@@ -17,7 +17,8 @@
     "discover:github:sample": "tsx src/cli/index.ts discover-github examples/github-discovery.sample.json",
     "enrich:github:sample": "tsx src/cli/index.ts enrich-github examples/programs.sample.json",
     "pipeline:sample": "tsx src/cli/index.ts pipeline examples/github-discovery.sample.json",
-    "audit:local:self": "tsx src/cli/index.ts audit-local ."
+    "audit:local:self": "tsx src/cli/index.ts audit-local .",
+    "web": "tsx src/web/server.ts"
   },
   "dependencies": {
     "zod": "^3.23.8"

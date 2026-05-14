@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Open Bounty Workbench</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local-first security research</p>
+          <h1>Open Bounty Workbench</h1>
+        </div>
+        <div class="status" id="healthStatus">Checking</div>
+      </header>
+
+      <section class="grid">
+        <form class="panel" id="pipelineForm">
+          <div class="panel-header">
+            <h2>Pipeline</h2>
+            <button type="submit">Run</button>
+          </div>
+          <label for="seedInput">GitHub discovery seeds</label>
+          <textarea id="seedInput" spellcheck="false"></textarea>
+        </form>
+
+        <form class="panel" id="auditForm">
+          <div class="panel-header">
+            <h2>Local Audit</h2>
+            <button type="submit">Scan</button>
+          </div>
+          <label for="repoPathInput">Approved local repo path</label>
+          <input id="repoPathInput" type="text" value="." autocomplete="off">
+          <p class="hint">Runs local static checks only. Findings are hypotheses until reproduced and validated.</p>
+        </form>
+      </section>
+
+      <section class="results">
+        <div class="result-header">
+          <h2>Results</h2>
+          <button id="clearButton" type="button">Clear</button>
+        </div>
+        <pre id="output">{}</pre>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

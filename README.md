@@ -27,9 +27,20 @@ It is not an automated bounty submission tool.
 ```bash
 npm install
 npm run check
+npm run web
 npm run triage:sample
 npm run report:sample
 ```
+
+## Web UI
+
+Start the local browser UI:
+
+```bash
+npm run web
+```
+
+By default it listens on `http://localhost:8787`. Set `PORT` or `HOST` to change the bind address.
 
 ## End-to-End Pipeline
 
